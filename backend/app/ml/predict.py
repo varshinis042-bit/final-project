@@ -35,8 +35,31 @@ class PredictionService:
             if not loaded:
                 raise RuntimeError("Model pipeline not available. Please run model training first.")
 
+        # Ensure all expected columns exist with clinically valid defaults
+        defaults = {
+            "height_cm": 170.0,
+            "weight_kg": 70.0,
+            "alcohol_status": "none",
+            "smoking_status": "never",
+            "diabetes_status": "no",
+            "physical_activity": "moderate",
+            "family_history": 0,
+            "sleep_duration": 7.0,
+            "stress_level": 3,
+            "resting_hr": 72,
+            "blood_glucose": 100,
+            "cholesterol": 190,
+            "systolic_bp": 120,
+            "diastolic_bp": 80,
+            "sex": "male"
+        }
+        full_dict = {**defaults, **profile_dict}
+        if "bmi" not in full_dict or not full_dict.get("bmi"):
+            h_m = float(full_dict["height_cm"]) / 100.0
+            full_dict["bmi"] = round(float(full_dict["weight_kg"]) / (h_m ** 2), 1)
+
         # Convert input dictionary to single-row DataFrame
-        df = pd.DataFrame([profile_dict])
+        df = pd.DataFrame([full_dict])
 
         # Feature engineering
         eng_df = engineer_features(df)

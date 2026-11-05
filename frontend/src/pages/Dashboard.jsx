@@ -92,7 +92,7 @@ export const Dashboard = () => {
 
   // Calculate Profile Completion %
   const calculateProfileCompletion = () => {
-    if (!profile) return { pct: 60, missing: ["Cholesterol", "Fasting Glucose"] }
+    if (!profile) return { pct: 0, missing: ["Age", "Height", "Weight", "Blood Pressure", "Cholesterol", "Fasting Glucose"] }
     const checks = [
       { key: "age", label: "Age" },
       { key: "height_cm", label: "Height" },
@@ -290,6 +290,7 @@ export const Dashboard = () => {
           <BodyHealthVisualizer
             profile={profile}
             latestPred={latestPred}
+            latestPrediction={latestPred}
             lifestyle={lifestyle}
           />
         </div>
@@ -424,22 +425,26 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950/50">
                 <span className="text-slate-400">{lang === "ta" ? "வயது & பாலினம்:" : "Age & Sex:"}</span>
                 <span className="font-semibold text-white">
-                  {profile?.age || 48} yrs • {profile?.sex === "male" ? (lang === "ta" ? "ஆண்" : "Male") : (lang === "ta" ? "பெண்" : "Female")}
+                  {profile?.age ? `${profile.age} yrs` : (lang === "ta" ? "குறிப்பிடப்படவில்லை" : "Not set")} • {profile?.sex ? (profile.sex === "male" ? (lang === "ta" ? "ஆண்" : "Male") : (lang === "ta" ? "பெண்" : "Female")) : (lang === "ta" ? "குறிப்பிடப்படவில்லை" : "Not set")}
                 </span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950/50">
                 <span className="text-slate-400">{lang === "ta" ? "இரத்த அழுத்தம்:" : "Blood Pressure:"}</span>
                 <span className={`font-semibold ${isHighBp ? "text-amber-400" : "text-white"}`}>
-                  {profile?.systolic_bp || 120} / {profile?.diastolic_bp || 80} mmHg
+                  {profile?.systolic_bp && profile?.diastolic_bp ? `${profile.systolic_bp} / ${profile.diastolic_bp} mmHg` : (lang === "ta" ? "பதிவு செய்யப்படவில்லை" : "Not recorded")}
                 </span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950/50">
                 <span className="text-slate-400">{lang === "ta" ? "உடல் நிறை குறியீடு (BMI):" : "Body Mass Index:"}</span>
-                <span className="font-semibold text-white">{profile?.bmi || 24.2} kg/m²</span>
+                <span className="font-semibold text-white">
+                  {profile?.bmi ? `${profile.bmi} kg/m²` : (lang === "ta" ? "கணக்கிடப்படவில்லை" : "Not calculated")}
+                </span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950/50">
                 <span className="text-slate-400">{lang === "ta" ? "வாழ்வியல் மதிப்பெண்:" : "Lifestyle Score:"}</span>
-                <span className="font-bold text-emerald-400">{lifeScore} / 100</span>
+                <span className="font-bold text-emerald-400">
+                  {lifestyle?.overall_lifestyle_score !== undefined ? `${lifestyle.overall_lifestyle_score} / 100` : (lang === "ta" ? "மதிப்பிடப்படவில்லை" : "Not assessed")}
+                </span>
               </div>
             </div>
           </div>

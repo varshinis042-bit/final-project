@@ -10,7 +10,11 @@ import {
   AlertCircle,
   Users,
   ShieldCheck,
-  X
+  X,
+  Copy,
+  Check,
+  MessageCircle,
+  Info
 } from "lucide-react"
 import api from "../services/api"
 import { useLanguage } from "../context/LanguageContext"
@@ -23,6 +27,31 @@ export const TrustedContactManager = ({ onSelectPrimary, compact = false }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [copiedPhone, setCopiedPhone] = useState("")
+
+  const getTelLink = (phoneOrContact) => {
+    const raw = typeof phoneOrContact === "object" && phoneOrContact !== null
+      ? (phoneOrContact.phone || phoneOrContact.mobile || "")
+      : phoneOrContact
+    if (!raw) return "#"
+    const digits = String(raw).replace(/\D/g, "")
+    const formatted = digits.length === 10 ? `+91${digits}` : (String(raw).trim().startsWith("+") ? `+${digits}` : digits)
+    return `tel:${formatted}`
+  }
+
+  const getWhatsAppLink = (num) => {
+    if (!num) return "#"
+    const digits = num.replace(/\D/g, "")
+    const fullNumber = digits.length === 10 ? `91${digits}` : digits
+    return `https://wa.me/${fullNumber}`
+  }
+
+  const handleCopyPhone = (num) => {
+    if (!num) return
+    navigator.clipboard.writeText(num)
+    setCopiedPhone(num)
+    setTimeout(() => setCopiedPhone(""), 3000)
+  }
 
   // Form / Modal state
   const [showModal, setShowModal] = useState(false)
@@ -219,13 +248,44 @@ export const TrustedContactManager = ({ onSelectPrimary, compact = false }) => {
               </p>
             </div>
           </div>
-          <a
-            href={`tel:${primaryContact.phone}`}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <Phone className="w-3.5 h-3.5 text-teal-400" />
-            <span>{isTa ? "அழைக்கவும்" : "Call Contact"}</span>
-          </a>
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            <a
+              href={getTelLink(primaryContact?.phone)}
+              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              title="Direct cellular call"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>{isTa ? "நேரடி அழைப்பு" : "Call Phone"}</span>
+            </a>
+            <a
+              href={getWhatsAppLink(primaryContact.phone)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Open WhatsApp chat / call"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>WhatsApp</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => handleCopyPhone(primaryContact.phone)}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition-colors"
+              title="Copy number to clipboard"
+            >
+              {copiedPhone === primaryContact.phone ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-teal-400" />
+                  <span className="text-teal-400 font-bold">{isTa ? "நகலெடுக்கப்பட்டது" : "Copied!"}</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{isTa ? "எண் நகல்" : "Copy"}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
@@ -276,6 +336,45 @@ export const TrustedContactManager = ({ onSelectPrimary, compact = false }) => {
                     {contact.relationship || "Contact"}
                     {contact.email ? ` • ${contact.email}` : ""}
                   </p>
+
+                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80">
+                    <a
+                      href={getTelLink(contact?.phone)}
+                      className="px-2 py-1 rounded-lg bg-teal-600/80 hover:bg-teal-500 text-white text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Direct phone call"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>{isTa ? "அழை" : "Call"}</span>
+                    </a>
+                    <a
+                      href={getWhatsAppLink(contact.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 transition-colors"
+                      title="WhatsApp call / message"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      <span>WhatsApp</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPhone(contact.phone)}
+                      className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] flex items-center gap-1 transition-colors"
+                      title="Copy phone number"
+                    >
+                      {copiedPhone === contact.phone ? (
+                        <>
+                          <Check className="w-3 h-3 text-teal-400" />
+                          <span className="text-teal-400 font-bold">{isTa ? "நகலெடுக்கப்பட்டது" : "Copied"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>{isTa ? "நகல்" : "Copy"}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -309,6 +408,18 @@ export const TrustedContactManager = ({ onSelectPrimary, compact = false }) => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Helpful calling guidance for PC vs Mobile */}
+      {contacts.length > 0 && (
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2.5">
+          <Info className="w-4 h-4 text-teal-400 flex-shrink-0" />
+          <span>
+            {isTa
+              ? "குறிப்பு: அவசர காலத்தில் 'Call' பொத்தான் மூலமாகவோ, வாட்ஸ்அப் அல்லது எண்ணை நகலெடுத்தோ (Copy) தொடர்புகொள்ளலாம்."
+              : "Tip: In an emergency, tap 'Call' to open your phone dialer (+91 supported), reach them via WhatsApp, or copy their number."}
+          </span>
         </div>
       )}
 

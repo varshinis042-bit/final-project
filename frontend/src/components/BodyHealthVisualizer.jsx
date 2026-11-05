@@ -1,31 +1,66 @@
-﻿import React, { useState } from "react"
+import React, { useState } from "react"
 import { Heart, Droplets, Scale, Wind, Brain, CheckCircle2, AlertTriangle, AlertCircle, X, Sparkles } from "lucide-react"
 import { useLanguage } from "../context/LanguageContext"
 
-export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) => {
+export const BodyHealthVisualizer = ({ profile, latestPrediction, latestPred, ecgRecord }) => {
   const { language, t } = useLanguage()
   const isTa = language === "ta"
   const [selectedOrgan, setSelectedOrgan] = useState("heart")
 
-  // Fallbacks if profile not yet completed
-  const bpSys = profile?.systolic_bp || 134
-  const bpDia = profile?.diastolic_bp || 86
-  const chol = profile?.cholesterol || 215
-  const glucose = profile?.blood_glucose || 105
-  const bmi = profile?.bmi || 25.8
-  const hr = profile?.resting_hr || 74
-  const smoking = profile?.smoking_status || "former"
-  const stress = profile?.stress_level || 3
-  const sleep = profile?.sleep_duration || 6.8
-  const riskPct = latestPrediction?.risk_percentage || 48.5
+  // Real user assessment data
+  const pred = latestPrediction || latestPred
+  const hasPrediction = !!pred && pred.risk_percentage !== undefined && pred.risk_percentage !== null
+  const riskPct = hasPrediction ? Number(pred.risk_percentage) : null
+
+  // Real user profile vitals (no fabricated data)
+  const hasBp = profile && profile.systolic_bp && profile.diastolic_bp
+  const bpSys = hasBp ? profile.systolic_bp : null
+  const bpDia = hasBp ? profile.diastolic_bp : null
+
+  const hasChol = profile && profile.cholesterol > 0
+  const chol = hasChol ? profile.cholesterol : null
+
+  const hasGlucose = profile && profile.blood_glucose > 0
+  const glucose = hasGlucose ? profile.blood_glucose : null
+
+  const hasBmi = profile && profile.bmi > 0
+  const bmi = hasBmi ? profile.bmi : null
+
+  const hr = profile?.resting_hr || null
+  const smoking = profile?.smoking_status || null
+  const stress = profile?.stress_level || null
+  const sleep = profile?.sleep_duration || null
   const ecgStatus = ecgRecord?.detected_pattern || (isTa ? "பரிசோதிக்கப்படவில்லை" : "Not yet tested")
 
-  // Status evaluators: "green", "yellow", "red"
-  const getHeartStatus = () => (riskPct < 20 ? "green" : riskPct < 50 ? "yellow" : "red")
-  const getBloodStatus = () => (bpSys >= 140 || chol >= 240 ? "red" : bpSys >= 130 || chol >= 200 ? "yellow" : "green")
-  const getBodyStatus = () => (bmi >= 27.5 ? "red" : bmi >= 23.0 ? "yellow" : "green")
-  const getLungsStatus = () => (smoking === "current" ? "red" : smoking === "former" ? "yellow" : "green")
-  const getMindStatus = () => (stress >= 4 || sleep < 6 ? "red" : stress === 3 || sleep < 7 ? "yellow" : "green")
+  // Status evaluators: "green", "yellow", "red", "neutral"
+  const getHeartStatus = () => {
+    if (!hasPrediction) return "neutral"
+    return riskPct < 20 ? "green" : riskPct < 50 ? "yellow" : "red"
+  }
+
+  const getBloodStatus = () => {
+    if (!hasBp && !hasChol) return "neutral"
+    const sbp = bpSys || 120
+    const ch = chol || 180
+    return (sbp >= 140 || ch >= 240) ? "red" : (sbp >= 130 || ch >= 200) ? "yellow" : "green"
+  }
+
+  const getBodyStatus = () => {
+    if (!hasBmi) return "neutral"
+    return bmi >= 27.5 ? "red" : bmi >= 23.0 ? "yellow" : "green"
+  }
+
+  const getLungsStatus = () => {
+    if (!smoking) return "neutral"
+    return smoking === "current" ? "red" : smoking === "former" ? "yellow" : "green"
+  }
+
+  const getMindStatus = () => {
+    if (!stress && !sleep) return "neutral"
+    const st = stress || 3
+    const sl = sleep || 7
+    return (st >= 4 || sl < 6) ? "red" : (st === 3 || sl < 7) ? "yellow" : "green"
+  }
 
   const organData = {
     heart: {
@@ -33,10 +68,16 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
       name: isTa ? "இதயம் (Heart)" : "Heart & Rhythm",
       icon: Heart,
       status: getHeartStatus(),
-      badgeText: getHeartStatus() === "green" ? (isTa ? "நன்று" : "Good") : getHeartStatus() === "yellow" ? (isTa ? "மிதமான அபாயம்" : "Moderate Risk") : (isTa ? "அதிக அபாயம்" : "High Risk"),
+      badgeText: !hasPrediction
+        ? (isTa ? "மதிப்பீடு இல்லை" : "Not Yet Assessed")
+        : getHeartStatus() === "green"
+        ? (isTa ? "நன்று" : "Low Risk")
+        : getHeartStatus() === "yellow"
+        ? (isTa ? "மிதமான அபாயம்" : "Moderate Risk")
+        : (isTa ? "அதிக அபாயம்" : "High Risk"),
       metrics: [
-        { label: isTa ? "இதயத் துடிப்பு" : "Heart Rate", val: `${hr} BPM` },
-        { label: isTa ? "10-ஆண்டு இதய அபாயம்" : "10-Yr Cardiovascular Risk", val: `${riskPct.toFixed(1)}%` },
+        { label: isTa ? "இதயத் துடிப்பு" : "Heart Rate", val: hr ? `${hr} BPM` : (isTa ? "பதிவு செய்யப்படவில்லை" : "Not recorded") },
+        { label: isTa ? "10-ஆண்டு இதய அபாயம்" : "10-Yr Cardiovascular Risk", val: hasPrediction ? `${riskPct.toFixed(1)}%` : (isTa ? "மதிப்பீடு இல்லை" : "Not yet calculated") },
         { label: isTa ? "ECG நிலை" : "ECG Status", val: ecgStatus }
       ],
       tip: isTa
@@ -48,11 +89,15 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
       name: isTa ? "இரத்த ஓட்டம் & அழுத்தம் (Blood)" : "Blood & Arteries",
       icon: Droplets,
       status: getBloodStatus(),
-      badgeText: getBloodStatus() === "green" ? (isTa ? "இயல்பானது" : "Normal") : (isTa ? "கவனம் தேவை" : "Needs Attention"),
+      badgeText: getBloodStatus() === "neutral"
+        ? (isTa ? "பதிவு இல்லை" : "Not Recorded")
+        : getBloodStatus() === "green"
+        ? (isTa ? "இயல்பானது" : "Normal")
+        : (isTa ? "கவனம் தேவை" : "Needs Attention"),
       metrics: [
-        { label: isTa ? "இரத்த அழுத்தம்" : "Blood Pressure", val: `${bpSys}/${bpDia} mmHg` },
-        { label: isTa ? "கொலஸ்ட்ரால்" : "Total Cholesterol", val: `${chol} mg/dL` },
-        { label: isTa ? "இரத்த சர்க்கரை" : "Fasting Glucose", val: `${glucose} mg/dL` }
+        { label: isTa ? "இரத்த அழுத்தம்" : "Blood Pressure", val: hasBp ? `${bpSys}/${bpDia} mmHg` : (isTa ? "பதிவு செய்யப்படவில்லை" : "Not recorded") },
+        { label: isTa ? "கொலஸ்ட்ரால்" : "Total Cholesterol", val: hasChol ? `${chol} mg/dL` : (isTa ? "பதிவு செய்யப்படவில்லை" : "Not recorded") },
+        { label: isTa ? "இரத்த சர்க்கரை" : "Fasting Glucose", val: hasGlucose ? `${glucose} mg/dL` : (isTa ? "பதிவு செய்யப்படவில்லை" : "Not recorded") }
       ],
       tip: isTa
         ? "பூண்டு, வெந்தயம் மற்றும் முழு தானியங்களை உணவில் சேர்த்துக் கொள்வது கொலஸ்ட்ரால் மற்றும் இரத்த அழுத்தத்தை சீராக வைக்க உதவும்."
@@ -63,11 +108,15 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
       name: isTa ? "உடல் நிறை (Body Mass)" : "Body Composition (BMI)",
       icon: Scale,
       status: getBodyStatus(),
-      badgeText: getBodyStatus() === "green" ? (isTa ? "சரியான எடை" : "Normal") : (isTa ? "கண்காணிக்கவும்" : "Overweight / Monitor"),
+      badgeText: getBodyStatus() === "neutral"
+        ? (isTa ? "பதிவு இல்லை" : "Not Recorded")
+        : getBodyStatus() === "green"
+        ? (isTa ? "சரியான எடை" : "Normal")
+        : (isTa ? "கண்காணிக்கவும்" : "Overweight / Monitor"),
       metrics: [
-        { label: isTa ? "உயரம்" : "Height", val: `${profile?.height_cm || 172} cm` },
-        { label: isTa ? "எடை" : "Weight", val: `${profile?.weight_kg || 76} kg` },
-        { label: isTa ? "BMI குறியீடு" : "Body Mass Index", val: `${bmi} kg/m²` }
+        { label: isTa ? "உயரம்" : "Height", val: profile?.height_cm ? `${profile.height_cm} cm` : (isTa ? "பதிவு இல்லை" : "Not set") },
+        { label: isTa ? "எடை" : "Weight", val: profile?.weight_kg ? `${profile.weight_kg} kg` : (isTa ? "பதிவு இல்லை" : "Not set") },
+        { label: isTa ? "BMI குறியீடு" : "Body Mass Index", val: hasBmi ? `${bmi} kg/m²` : (isTa ? "கணக்கிடப்படவில்லை" : "Not calculated") }
       ],
       tip: isTa
         ? "ஆசிய அளவீட்டின்படி BMI 23-க்கு குறைவாக இருப்பது இதய சுமையை பெருமளவு குறைக்கும்."
@@ -78,9 +127,15 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
       name: isTa ? "நுரையீரல் & சுவாசம் (Lungs)" : "Lungs & Tobacco",
       icon: Wind,
       status: getLungsStatus(),
-      badgeText: smoking === "never" ? (isTa ? "புகைப்பிடிக்காதவர் (நன்று)" : "Non-Smoker (Good)") : smoking === "former" ? (isTa ? "முன்னாள் புகைப்பவர்" : "Quit Smoking") : (isTa ? "புகைப்பவர் (அபாயம்)" : "Active Smoker"),
+      badgeText: getLungsStatus() === "neutral"
+        ? (isTa ? "தெரியவில்லை" : "Not Set")
+        : smoking === "never"
+        ? (isTa ? "புகைப்பிடிக்காதவர்" : "Non-Smoker (Good)")
+        : smoking === "former"
+        ? (isTa ? "முன்னாள் புகைப்பவர்" : "Quit Smoking")
+        : (isTa ? "புகைப்பவர் (அபாயம்)" : "Active Smoker"),
       metrics: [
-        { label: isTa ? "புகை நிலை" : "Tobacco Status", val: smoking.toUpperCase() },
+        { label: isTa ? "புகை நிலை" : "Tobacco Status", val: smoking ? smoking.toUpperCase() : "NOT SET" },
         { label: isTa ? "ஆக்ஸிஜன் தரம்" : "Arterial Oxygenation", val: smoking === "current" ? "Reduced" : "Preserved" }
       ],
       tip: isTa
@@ -92,10 +147,14 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
       name: isTa ? "மனநலம் & தூக்கம் (Mind & Sleep)" : "Mind & Sleep Health",
       icon: Brain,
       status: getMindStatus(),
-      badgeText: getMindStatus() === "green" ? (isTa ? "சீரான ஓய்வு" : "Well Rested") : (isTa ? "மன அழுத்தம் குறைக்கவும்" : "Manage Stress"),
+      badgeText: getMindStatus() === "neutral"
+        ? (isTa ? "பதிவு இல்லை" : "Not Recorded")
+        : getMindStatus() === "green"
+        ? (isTa ? "சீரான ஓய்வு" : "Well Rested")
+        : (isTa ? "மன அழுத்தம் குறைக்கவும்" : "Manage Stress"),
       metrics: [
-        { label: isTa ? "தூங்கும் நேரம்" : "Sleep Duration", val: `${sleep} hrs/night` },
-        { label: isTa ? "மன அழுத்தம்" : "Stress Level", val: `${stress} / 5` }
+        { label: isTa ? "தூங்கும் நேரம்" : "Sleep Duration", val: sleep ? `${sleep} hrs/night` : "Not recorded" },
+        { label: isTa ? "மன அழுத்தம்" : "Stress Level", val: stress ? `${stress} / 5` : "Not recorded" }
       ],
       tip: isTa
         ? "இரவு 7-8 மணி நேர ஆழ்ந்த உறக்கம் இரத்த அழுத்தத்தை இரவில் இயல்பாக குறைத்து இதயத்தை புத்துணர்ச்சியடையச் செய்கிறது."
@@ -109,7 +168,8 @@ export const BodyHealthVisualizer = ({ profile, latestPrediction, ecgRecord }) =
   const getPinColor = (status) => {
     if (status === "green") return "bg-emerald-500 shadow-emerald-500/50 text-white"
     if (status === "yellow") return "bg-amber-400 shadow-amber-500/50 text-slate-950"
-    return "bg-rose-500 shadow-rose-500/50 text-white"
+    if (status === "red") return "bg-rose-500 shadow-rose-500/50 text-white"
+    return "bg-slate-700 shadow-slate-700/50 text-slate-300"
   }
 
   return (

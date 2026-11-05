@@ -25,7 +25,13 @@ export const Register = () => {
       await register(email, fullName, password)
       navigate("/risk-assessment")
     } catch (err) {
-      setError(err.response?.data?.detail || "Registration failed. Please try a different email.")
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === "string" 
+        ? detail 
+        : Array.isArray(detail)
+          ? detail.map(d => (typeof d === "string" ? d : d.msg || JSON.stringify(d))).join(". ")
+          : (detail?.msg || "Registration failed. Please verify your details or use a different email.")
+      setError(msg)
     } finally {
       setLoading(false)
     }

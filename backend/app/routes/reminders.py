@@ -46,21 +46,19 @@ async def get_reminders(current_user: dict = Depends(get_optional_user)):
     reminders = await db.find_many("reminders", {"user_id": user_id}, sort_field="time", descending=False)
     
     if not reminders:
-        created = []
-        for item in DEMO_DEFAULT_REMINDERS:
-            doc = {
-                **item,
-                "_id": str(uuid.uuid4()),
-                "user_id": user_id,
-                "created_at": datetime.utcnow().isoformat()
-            }
-            await db.insert_one("reminders", doc)
-            created.append(ReminderResponse(
-                id=doc["_id"],
-                user_id=user_id,
-                **{k: v for k, v in doc.items() if k not in ["_id", "user_id"]}
-            ))
-        return created
+        if user_id == "guest_user":
+            # For guest/demo preview, return demonstration schedule without polluting persistent database
+            return [
+                ReminderResponse(
+                    id=f"demo_{i}",
+                    user_id="guest_user",
+                    **item,
+                    created_at=datetime.utcnow().isoformat()
+                )
+                for i, item in enumerate(DEMO_DEFAULT_REMINDERS)
+            ]
+        # Real registered users start with an empty reminder schedule
+        return []
 
     return [
         ReminderResponse(

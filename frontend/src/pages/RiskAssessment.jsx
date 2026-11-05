@@ -125,7 +125,13 @@ export const RiskAssessment = () => {
       const predId = res.data.prediction_id || res.data._id || res.data.id
       navigate(`/prediction-result?id=${predId}`)
     } catch (err) {
-      setError(err.response?.data?.detail || "Assessment submission failed. Please verify the entered values.")
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map(d => (typeof d === "string" ? d : d.msg || JSON.stringify(d))).join(". ")
+          : (detail?.msg || "Assessment submission failed. Please verify the entered values.")
+      setError(msg)
     } finally {
       setLoading(false)
     }

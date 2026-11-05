@@ -32,12 +32,12 @@ DEFAULT_BASELINE_PROFILE = {
 async def get_profile(current_user: dict = Depends(get_optional_user)):
     if not current_user:
         # Return default demonstration baseline for unauthenticated / guest demo access
-        return HealthProfileResponse(**DEFAULT_BASELINE_PROFILE, id="demo_profile", user_id="guest")
+        return HealthProfileResponse(**DEFAULT_BASELINE_PROFILE, id="demo_profile", user_id="guest", is_customized=False)
 
     user_id = str(current_user["_id"])
     profile = await db.find_one("profiles", {"user_id": user_id})
     if not profile:
-        profile_data = {**DEFAULT_BASELINE_PROFILE, "user_id": user_id}
+        profile_data = {**DEFAULT_BASELINE_PROFILE, "user_id": user_id, "is_customized": False}
         pid = await db.insert_one("profiles", profile_data)
         profile_data["_id"] = pid
         profile = profile_data
@@ -45,8 +45,9 @@ async def get_profile(current_user: dict = Depends(get_optional_user)):
     return HealthProfileResponse(
         id=str(profile.get("_id", "")),
         user_id=str(profile.get("user_id", "")),
+        is_customized=bool(profile.get("is_customized", False)),
         updated_at=profile.get("updated_at"),
-        **{k: v for k, v in profile.items() if k not in ["_id", "user_id", "updated_at"]}
+        **{k: v for k, v in profile.items() if k not in ["_id", "user_id", "updated_at", "is_customized"]}
     )
 
 @router.put("", response_model=HealthProfileResponse)
@@ -54,6 +55,7 @@ async def update_profile(profile_in: HealthProfileInput, current_user: dict = De
     user_id = str(current_user["_id"])
     data = profile_in.model_dump()
     data["bmi"] = profile_in.calculate_bmi()
+    data["is_customized"] = True
 
     await db.update_one("profiles", {"user_id": user_id}, data, upsert=True)
     profile = await db.find_one("profiles", {"user_id": user_id})
@@ -61,6 +63,7 @@ async def update_profile(profile_in: HealthProfileInput, current_user: dict = De
     return HealthProfileResponse(
         id=str(profile.get("_id", "")),
         user_id=user_id,
+        is_customized=True,
         updated_at=profile.get("updated_at"),
         **data
     )

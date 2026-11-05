@@ -56,4 +56,5 @@ class HealthProfileInput(BaseModel):
 class HealthProfileResponse(HealthProfileInput):
     id: Optional[str] = None
     user_id: Optional[str] = None
+    is_customized: bool = True
     updated_at: Optional[str] = None

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import {
   Activity,
@@ -98,7 +98,13 @@ export const EcgMonitor = () => {
       setAnalysisResult(res.data)
       setRecentScans((prev) => [res.data, ...prev.filter((r) => r.id !== res.data.id)])
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || (isTa ? "ECG பகுப்பாய்வு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்." : "ECG analysis failed. Please try again with a clear image."))
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map(d => (typeof d === "string" ? d : d.msg || JSON.stringify(d))).join(". ")
+          : (detail?.msg || (isTa ? "ECG பகுப்பாய்வு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்." : "ECG analysis failed. Please try again with a clear image."))
+      setErrorMsg(msg)
     } finally {
       setAnalyzing(false)
     }

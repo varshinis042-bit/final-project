@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import {
   AlertOctagon,
   PhoneCall,
@@ -6,7 +7,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   PhoneForwarded,
-  ArrowRight
+  ArrowRight,
+  MessageCircle,
+  Copy,
+  Check,
+  UserCheck,
+  MapPin,
+  ExternalLink
 } from "lucide-react"
 import api from "../services/api"
 import { MedicalDisclaimer } from "../components/MedicalDisclaimer"
@@ -24,6 +31,56 @@ export const EmergencyModule = () => {
 
   const [triageResult, setTriageResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [callFeedback, setCallFeedback] = useState(null)
+  const [trustedContacts, setTrustedContacts] = useState([])
+  const [copiedNumber, setCopiedNumber] = useState("")
+
+  useEffect(() => {
+    loadTrustedContacts()
+  }, [])
+
+  const loadTrustedContacts = async () => {
+    try {
+      const res = await api.get("/symptoms/trusted-contacts")
+      setTrustedContacts(res.data || [])
+    } catch (e) {
+      console.warn("Could not load trusted contacts in EmergencyModule:", e)
+    }
+  }
+
+  const primaryContact = trustedContacts.find((c) => c.is_primary) || trustedContacts[0]
+
+  const handleEmergencyCall = (e, num) => {
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    if (!isMobile) {
+      setCallFeedback("Please call 112 or 108 using your mobile phone.")
+      setTimeout(() => setCallFeedback(null), 8000)
+    }
+    try {
+      window.location.href = `tel:${num}`
+    } catch (err) {}
+  }
+
+  const getTelLink = (num) => {
+    if (!num) return "#"
+    const digits = num.replace(/\D/g, "")
+    const formatted = digits.length === 10 ? `+91${digits}` : (num.startsWith("+") ? num : `+${digits}`)
+    return `tel:${formatted}`
+  }
+
+  const handleCopyPhone = (num) => {
+    if (!num) return
+    navigator.clipboard.writeText(num)
+    setCopiedNumber(num)
+    setTimeout(() => setCopiedNumber(""), 3000)
+  }
+
+  const getWhatsAppLink = (num) => {
+    if (!num) return "#"
+    const digits = num.replace(/\D/g, "")
+    const fullNumber = digits.length === 10 ? `91${digits}` : digits
+    return `https://wa.me/${fullNumber}?text=${encodeURIComponent("🚨 Urgent: I am experiencing acute cardiac symptoms and may need assistance. Please check on me.")}`
+  }
 
   const toggleSymptom = (key) => {
     setSymptoms((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -80,6 +137,7 @@ export const EmergencyModule = () => {
         <div className="grid grid-cols-3 gap-3 pt-2">
           <a
             href="tel:112"
+            onClick={(e) => handleEmergencyCall(e, "112")}
             className="py-3 px-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm text-center shadow-lg shadow-rose-950/80 flex items-center justify-center gap-1.5 transition-transform hover:scale-105"
           >
             <PhoneCall className="w-4 h-4" />
@@ -87,6 +145,7 @@ export const EmergencyModule = () => {
           </a>
           <a
             href="tel:108"
+            onClick={(e) => handleEmergencyCall(e, "108")}
             className="py-3 px-2 rounded-2xl bg-rose-700 hover:bg-rose-600 text-white font-extrabold text-sm text-center shadow-lg shadow-rose-950/80 flex items-center justify-center gap-1.5 transition-transform hover:scale-105"
           >
             <PhoneCall className="w-4 h-4" />
@@ -94,12 +153,60 @@ export const EmergencyModule = () => {
           </a>
           <a
             href="tel:911"
+            onClick={(e) => handleEmergencyCall(e, "911")}
             className="py-3 px-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm text-center border border-slate-700 flex items-center justify-center gap-1.5 transition-transform hover:scale-105"
           >
             <PhoneCall className="w-4 h-4" />
             <span>Call 911</span>
           </a>
         </div>
+
+        {callFeedback && (
+          <div className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500 text-rose-200 text-xs font-semibold text-center animate-in fade-in">
+            {callFeedback}
+          </div>
+        )}
+
+        {/* Primary Trusted Contact Quick Action */}
+        {primaryContact && (
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center justify-center font-bold flex-shrink-0">
+                <UserCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-teal-300 block tracking-wider">
+                  Notify Emergency Contact • {primaryContact.relationship}
+                </span>
+                <span className="text-xs font-bold text-white">
+                  {primaryContact.name} ({primaryContact.phone})
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={getTelLink(primaryContact.phone)}
+                onClick={() => {
+                  window.location.href = getTelLink(primaryContact.phone)
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                title={`Call ${primaryContact.name}`}
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Call {primaryContact.name}</span>
+              </a>
+              <a
+                href={getWhatsAppLink(primaryContact.phone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       <MedicalDisclaimer compact={true} />

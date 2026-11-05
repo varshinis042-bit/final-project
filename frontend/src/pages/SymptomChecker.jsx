@@ -24,7 +24,9 @@ import {
   RotateCcw,
   Activity,
   History,
-  FileText
+  FileText,
+  MessageCircle,
+  Check
 } from "lucide-react"
 import api from "../services/api"
 import { useLanguage } from "../context/LanguageContext"
@@ -38,6 +40,7 @@ export const SymptomChecker = () => {
 
   // Step Wizard State (1: Symptoms & Voice, 2: Confirm & Locations, 3: Onset & Duration, 4: Severity & Trend, 5: Medical History, 6: Assessment Result)
   const [step, setStep] = useState(1)
+  const [copiedContactPhone, setCopiedContactPhone] = useState("")
 
   // Symptom Description & NLP
   const [description, setDescription] = useState("")
@@ -1299,17 +1302,50 @@ export const SymptomChecker = () => {
                       <span className="font-bold text-white block">{c.name}</span>
                       <span className="text-[11px] text-slate-400">{c.relationship} • {c.phone}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <a
-                        href={`tel:${c.phone}`}
-                        className="p-1.5 rounded-lg bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50"
-                        title="Call Contact"
+                        href={`tel:${c.phone.replace(/\D/g, "").length === 10 ? `+91${c.phone.replace(/\D/g, "")}` : (c.phone.startsWith("+") ? c.phone : `+${c.phone.replace(/\D/g, "")}`)}`}
+                        onClick={() => {
+                          try {
+                            const digits = c.phone.replace(/\D/g, "")
+                            const full = digits.length === 10 ? `+91${digits}` : (c.phone.startsWith("+") ? c.phone : `+${digits}`)
+                            window.location.href = `tel:${full}`
+                          } catch (e) {}
+                        }}
+                        className="p-1.5 rounded-lg bg-teal-600/30 text-teal-300 hover:bg-teal-600/50 transition-colors cursor-pointer"
+                        title={`Call ${c.name} (${c.phone})`}
                       >
                         <PhoneCall className="w-3.5 h-3.5" />
                       </a>
+                      <a
+                        href={`https://wa.me/${c.phone.replace(/\D/g, "").length === 10 ? `91${c.phone.replace(/\D/g, "")}` : c.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50 transition-colors"
+                        title="Open WhatsApp Call / Chat (Works directly on Laptop & Phone)"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
                       <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(c.phone)
+                          setCopiedContactPhone(c.phone)
+                          setTimeout(() => setCopiedContactPhone(""), 3500)
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                        title="Copy Number"
+                      >
+                        {copiedContactPhone === c.phone ? (
+                          <Check className="w-3.5 h-3.5 text-teal-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDeleteContact(c.id)}
-                        className="p-1.5 rounded-lg bg-rose-600/20 text-rose-300 hover:bg-rose-600/40"
+                        className="p-1.5 rounded-lg bg-rose-600/20 text-rose-300 hover:bg-rose-600/40 transition-colors"
                         title="Delete Contact"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1319,6 +1355,17 @@ export const SymptomChecker = () => {
                 ))
               )}
             </div>
+
+            {copiedContactPhone && (
+              <div className="p-2.5 rounded-xl bg-teal-950/70 border border-teal-500/40 text-teal-200 text-[11px] flex items-center gap-2 animate-in fade-in">
+                <Check className="w-4 h-4 text-teal-400 flex-shrink-0" />
+                <span>
+                  {lang === "ta"
+                    ? `எண் நகலெடுக்கப்பட்டது (${copiedContactPhone})! கணினியில் WhatsApp வழியாக நேரடியாக அழைக்கலாம்.`
+                    : `Copied ${copiedContactPhone}! On laptop, use the green WhatsApp button or dial from phone.`}
+                </span>
+              </div>
+            )}
 
             <form onSubmit={handleAddContact} className="space-y-3 pt-2 border-t border-slate-800">
               <span className="text-xs font-bold text-slate-300 block">{lang === "ta" ? "புதிய தொடர்பை சேர்க்கவும்:" : "Add Contact:"}</span>

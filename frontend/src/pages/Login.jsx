@@ -20,7 +20,13 @@ export const Login = () => {
       await login(email, password)
       navigate("/dashboard")
     } catch (err) {
-      setError(err.response?.data?.detail || "Invalid login credentials. Please try again.")
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map(d => (typeof d === "string" ? d : d.msg || JSON.stringify(d))).join(". ")
+          : (detail?.msg || "Invalid email or password. Please try again.")
+      setError(msg)
     } finally {
       setLoading(false)
     }

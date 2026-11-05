@@ -187,9 +187,11 @@ export const TodayHealthPlan = () => {
   }
 
   const items = plan?.items || defaultTasks
-  const percent = plan?.completion_percentage || 0
-  const completedCount = plan?.completed_count || 0
-  const totalTasks = plan?.total_items || items.length
+  const completedCount = plan?.completed_count !== undefined 
+    ? plan.completed_count 
+    : (items ? items.filter((i) => i.completed).length : 0)
+  const totalTasks = plan?.total_items || (items ? items.length : 0)
+  const percent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0
 
   return (
     <div className="glass-card rounded-3xl p-5 sm:p-7 border border-slate-800 bg-slate-900/80 space-y-4">
